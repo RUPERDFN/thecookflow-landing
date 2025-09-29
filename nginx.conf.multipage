@@ -1,0 +1,19 @@
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html index.htm;
+
+    # multipágina clásica: intenta recurso físico y variantes
+    location / {
+        try_files $uri $uri.html $uri/index.html $uri/index.htm =404;
+    }
+
+    error_page 404 /404.html;
+    location = /404.html { root /usr/share/nginx/html; internal; }
+
+    # compresión
+    gzip on;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+}
