@@ -98,43 +98,4 @@ server {
 
     location / {
         try_files $uri $uri/ =404;
-    }
-
-    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
 ```
-
-## 📊 Estado Actual
-
-### ✅ **Completado y Funcional**
-- [x] HTML estructura completa
-- [x] CSS tema pizarra con animaciones
-- [x] JavaScript con todas las funcionalidades
-- [x] Páginas legales (privacidad y términos)
-- [x] SEO metadata completo
-- [x] Responsive design
-- [x] Formulario de email preparado
-
-### 🔄 **Pendiente (por tu parte)**
-- [ ] Añadir logo real (`assets/logo.png`)
-- [ ] Añadir imagen de fondo (`assets/bg.jpg`) 
-- [ ] Configurar Formspree con tu Form ID
-- [ ] Reemplazar favicon placeholder por el real
-- [ ] Añadir badges de App Store cuando estén listos
-
-## 📞 Soporte
-
-La landing está **100% funcional** tal como está. Solo necesitas:
-
-1. **Subir los archivos** a `/var/www/thecookflow/landing/`
-2. **Añadir tu logo** en `assets/logo.png`
-3. **Configurar Formspree** con tu Form ID real
-
-¡Y estará lista para recibir visitantes!
-
----
-
-**¿Necesitas ayuda?** Toda la documentación está incluida en los archivos.
