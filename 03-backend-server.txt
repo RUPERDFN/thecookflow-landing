@@ -1,0 +1,593 @@
+===== THECOOKFLOW - BACKEND SERVER =====
+
+===== FILE: server/index.ts =====
+import express, { type Request, Response, NextFunction } from "express";
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
+
+const app = express();
+
+// Cloud Run optimizations
+app.set('trust proxy', true);
+
+// Health check endpoint for Cloud Run
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    env: process.env.NODE_ENV
+  });
+});
+
+// Readiness check endpoint for Cloud Run
+app.get('/ready', (_req: Request, res: Response) => {
+  res.status(200).json({ 
+    status: 'ready', 
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false }));
+
+// Cloud Run timeout protection middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const timeout = 55 * 60 * 1000; // 55 minutes
+  req.setTimeout(timeout);
+  res.setTimeout(timeout);
+  next();
+});
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      }
+
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
+      }
+
+      log(logLine);
+    }
+  });
+
+  next();
+});
+
+(async () => {
+  const server = await registerRoutes(app);
+
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    res.status(status).json({ message });
+    throw err;
+  });
+
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
+
+  const port = parseInt(process.env.PORT || '5000', 10);
+  
+  const httpServer = server.listen(port, '0.0.0.0', () => {
+    log(`serving on port ${port}`);
+    
+    if (process.env.NODE_ENV === 'production') {
+      log('TheCookFlow server ready for Cloud Run');
+    }
+  });
+
+  // Graceful shutdown handling for Cloud Run
+  const gracefulShutdown = (signal: string) => {
+    log(`${signal} received. Starting graceful shutdown...`);
+    
+    httpServer.close((err) => {
+      if (err) {
+        log(`Error during server shutdown: ${err.message}`);
+        process.exit(1);
+      }
+      
+      log('Server closed. Exiting process.');
+      process.exit(0);
+    });
+
+    // Force shutdown after 30 seconds
+    setTimeout(() => {
+      log('Forcing shutdown after timeout');
+      process.exit(1);
+    }, 30000);
+  };
+
+  // Handle shutdown signals
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  
+  // Handle uncaught exceptions and rejections
+  process.on('uncaughtException', (err) => {
+    log(`Uncaught Exception: ${err.message}`);
+    gracefulShutdown('uncaughtException');
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    log(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+    gracefulShutdown('unhandledRejection');
+  });
+})();
+
+===== FILE: server/db.ts =====
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import ws from "ws";
+import * as schema from "@shared/schema";
+
+neonConfig.webSocketConstructor = ws;
+
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
+}
+
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle({ client: pool, schema });
+
+===== FILE: server/auth.ts =====
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import type { Express, RequestHandler } from "express";
+import { storage } from "./storage";
+import { z } from 'zod';
+
+// JWT Secret - in production this should be from environment variables
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_EXPIRES_IN = '7d';
+
+// Validation schemas
+const registerSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+  firstName: z.string().min(1, "El nombre es requerido"),
+  lastName: z.string().min(1, "El apellido es requerido"),
+});
+
+const loginSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(1, "La contraseña es requerida"),
+});
+
+// Hash password utility
+export async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 12;
+  return await bcrypt.hash(password, saltRounds);
+}
+
+// Verify password utility
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  return await bcrypt.compare(password, hashedPassword);
+}
+
+// Generate JWT token
+export function generateToken(userId: string): string {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+}
+
+// Verify JWT token
+export function verifyToken(token: string): { userId: string } | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    return decoded;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Authentication middleware
+export const authenticateToken: RequestHandler = async (req: any, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ 
+      error: "Token de acceso requerido",
+      code: "NO_TOKEN" 
+    });
+  }
+
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(401).json({ 
+      error: "Token inválido o expirado",
+      code: "INVALID_TOKEN" 
+    });
+  }
+
+  try {
+    const user = await storage.getUser(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ 
+        error: "Usuario no encontrado",
+        code: "USER_NOT_FOUND" 
+      });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error("Error en middleware de autenticación:", error);
+    return res.status(500).json({ 
+      error: "Error interno del servidor",
+      code: "INTERNAL_ERROR" 
+    });
+  }
+};
+
+// Setup authentication routes
+export function setupAuth(app: Express): void {
+  // Get current user route
+  app.get('/api/auth/user', authenticateToken, async (req: any, res) => {
+    try {
+      res.json(req.user);
+    } catch (error) {
+      console.error("Error getting user:", error);
+      res.status(500).json({ error: "Error al obtener información del usuario" });
+    }
+  });
+
+  // Register endpoint
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const validatedData = registerSchema.parse(req.body);
+      const { email, password, firstName, lastName } = validatedData;
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({
+          error: "Ya existe una cuenta con este email",
+          code: "EMAIL_EXISTS"
+        });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(password);
+
+      // Create user
+      const user = await storage.createUser({
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+      });
+
+      // Generate token
+      const token = generateToken(user.id);
+
+      // Return user data (without password) and token
+      const { password: _, ...userWithoutPassword } = user;
+      
+      res.status(201).json({
+        message: "Usuario registrado exitosamente",
+        user: userWithoutPassword,
+        token,
+        expiresIn: JWT_EXPIRES_IN
+      });
+
+    } catch (error) {
+      console.error("Error en registro:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Datos de entrada inválidos",
+          code: "VALIDATION_ERROR",
+          details: error.errors
+        });
+      }
+
+      res.status(500).json({
+        error: "Error interno del servidor",
+        code: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Login endpoint
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const validatedData = loginSchema.parse(req.body);
+      const { email, password } = validatedData;
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({
+          error: "Email o contraseña incorrectos",
+          code: "INVALID_CREDENTIALS"
+        });
+      }
+
+      // Verify password
+      if (!user.password) {
+        return res.status(401).json({
+          error: "Email o contraseña incorrectos",
+          code: "INVALID_CREDENTIALS"
+        });
+      }
+      
+      const isValidPassword = await verifyPassword(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({
+          error: "Email o contraseña incorrectos",
+          code: "INVALID_CREDENTIALS"
+        });
+      }
+
+      // Generate token
+      const token = generateToken(user.id);
+
+      // Return user data (without password) and token
+      const { password: _, ...userWithoutPassword } = user;
+
+      res.json({
+        message: "Inicio de sesión exitoso",
+        user: userWithoutPassword,
+        token,
+        expiresIn: JWT_EXPIRES_IN
+      });
+
+    } catch (error) {
+      console.error("Error en login:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Datos de entrada inválidos",
+          code: "VALIDATION_ERROR",
+          details: error.errors
+        });
+      }
+
+      res.status(500).json({
+        error: "Error interno del servidor",
+        code: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Logout endpoint (client-side token deletion)
+  app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+    res.json({
+      message: "Sesión cerrada exitosamente"
+    });
+  });
+}
+
+// Type declarations
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
+
+===== FILE: server/openai.ts =====
+import OpenAI from "openai";
+
+const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
+});
+
+export interface MenuPreferences {
+  dietaryRestrictions: string[];
+  budget: string;
+  cookingTime: string;
+  servings: number;
+  daysToGenerate?: number;
+  mealsPerDay?: number;
+  cuisine?: string[];
+  allergies?: string[];
+  availableIngredients?: string[];
+  favorites?: string[];
+  dislikes?: string[];
+}
+
+export interface GeneratedMenuPlan {
+  name: string;
+  days: {
+    dayOfWeek: number;
+    dayName: string;
+    meals: {
+      mealType: string;
+      name: string;
+      description: string;
+      ingredients: Array<{
+        name: string;
+        amount: string;
+        unit: string;
+        category: string;
+      }>;
+      instructions: string[];
+      nutritionInfo: {
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+        fiber: number;
+      };
+      cookingTime: number;
+      servings: number;
+    }[];
+  }[];
+  totalEstimatedCost: number;
+  shoppingList: {
+    category: string;
+    items: Array<{
+      name: string;
+      amount: string;
+      unit: string;
+      estimatedPrice: number;
+    }>;
+  }[];
+}
+
+// Optimized prompt generator - minimal character usage for API efficiency
+function generateOptimizedPrompt(preferences: MenuPreferences): string {
+  // Compress data to minimal format
+  const diet = preferences.dietaryRestrictions?.join(',') || 'normal';
+  const allergies = preferences.allergies?.filter(a => a !== 'ninguna').join(',') || '';
+  const fridge = preferences.availableIngredients?.filter(i => i !== 'no hay ingredientes disponibles').join(',') || '';
+  const likes = preferences.favorites?.filter(f => f !== 'ninguno especificado').join(',') || '';
+  const avoid = preferences.dislikes?.filter(d => d !== 'ninguno').join(',') || '';
+  
+  // Ultra-compact prompt with exact format specification (saves ~80% characters vs original)
+  return `JSON menú ${preferences.daysToGenerate || 7}d ${preferences.mealsPerDay || 4}com/d esp:
+D:${diet} A:${allergies} €${preferences.budget} T:${preferences.cookingTime} ${preferences.servings}p
+${fridge ? `F:${fridge}` : ''}${likes ? ` G:${likes}` : ''}${avoid ? ` X:${avoid}` : ''}
+FORMATO EXACTO: dayOfWeek=número mealType=breakfast/midmorning/lunch/snack/dinner unit="gramos"
+{name,days:[{dayOfWeek:1,dayName:"Lunes",meals:[{mealType:"breakfast",name,description,ingredients:[{name,amount,unit:"gramos",category}],instructions[],nutritionInfo:{calories,protein,carbs,fat,fiber},cookingTime,servings:${preferences.servings}}]}],totalEstimatedCost,shoppingList:[{category,items:[{name,amount,unit:"gramos",estimatedPrice}]}]}`;
+}
+
+export async function generateWeeklyMenuPlan(preferences: MenuPreferences, enhancementData?: {
+  seasonalIngredients: string[];
+  trends: string[];
+  budgetTips: string;
+}): Promise<GeneratedMenuPlan> {
+  const prompt = generateOptimizedPrompt(preferences);
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "Chef profesional. Crea menús JSON válidos con recetas españolas detalladas."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{}');
+    return result as GeneratedMenuPlan;
+  } catch (error) {
+    throw new Error("Failed to generate menu plan: " + (error as Error).message);
+  }
+}
+
+export async function recognizeFoodFromImage(base64Image: string): Promise<string[]> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "Experto en reconocimiento de alimentos. Identifica ingredientes visibles en imágenes con precisión. Responde solo con lista de ingredientes en español."
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Lista ingredientes visibles:"
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
+              }
+            }
+          ],
+        },
+      ],
+      max_tokens: 300,
+    });
+
+    const content = response.choices[0].message.content || '';
+    
+    // Extract ingredients from response
+    const ingredients = content
+      .split(/[,\n\-\*]/)
+      .map(ingredient => ingredient.trim().toLowerCase())
+      .filter(ingredient => ingredient.length > 2 && !ingredient.includes(':'))
+      .slice(0, 15); // Limit to 15 ingredients
+
+    return ingredients.length > 0 ? ingredients : ['tomate', 'cebolla', 'ajo'];
+  } catch (error) {
+    console.error("Error recognizing food from image:", error);
+    return ['tomate', 'cebolla', 'ajo']; // Fallback ingredients
+  }
+}
+
+export async function generateRecipeSuggestions(availableIngredients: string[]): Promise<{
+  recipes: Array<{
+    name: string;
+    description: string;
+    difficulty: string;
+    cookingTime: number;
+    ingredients: string[];
+    instructions: string[];
+  }>;
+}> {
+  const ingredientsList = availableIngredients.join(',');
+  
+  // Optimized prompt for recipe suggestions
+  const prompt = `Recetas con: ${ingredientsList}
+JSON: {recipes:[{name,description,difficulty,cookingTime,ingredients[],instructions[]}]}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "Chef experto. Genera recetas españolas usando ingredientes disponibles."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.8,
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{"recipes":[]}');
+    return result;
+  } catch (error) {
+    console.error("Error generating recipe suggestions:", error);
+    return {
+      recipes: [
+        {
+          name: "Sofrito básico",
+          description: "Base para muchos platos españoles",
+          difficulty: "Fácil",
+          cookingTime: 15,
+          ingredients: availableIngredients.slice(0, 5),
+          instructions: ["Cortar ingredientes", "Sofreír en aceite", "Condimentar al gusto"]
+        }
+      ]
+    };
+  }
+}

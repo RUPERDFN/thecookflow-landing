@@ -1,0 +1,299 @@
+===== THECOOKFLOW - FRONTEND CORE =====
+
+===== FILE: client/src/App.tsx =====
+import { Route, Switch } from "wouter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import Navbar from "@/components/Navbar";
+import Home from "@/pages/Home";
+import MenuGenerator from "@/pages/MenuGenerator";
+import MenuView from "@/pages/MenuView";
+import SkinChef from "@/pages/SkinChef";
+import ShoppingList from "@/pages/ShoppingList";
+import Profile from "@/pages/Profile";
+import Settings from "@/pages/Settings";
+import Help from "@/pages/Help";
+import Contact from "@/pages/Contact";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+import DemoQuestionnaire from "@/pages/DemoQuestionnaire";
+import DemoGenerator from "@/pages/DemoGenerator";
+import DemoSkinChef from "@/pages/DemoSkinChef";
+import { Toaster } from "@/components/ui/toaster";
+import { queryClient } from "@/lib/queryClient";
+
+function AuthenticatedApp() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
+      <Navbar />
+      <main className="pt-16">
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/menu-generator" component={MenuGenerator} />
+          <Route path="/menu/:id" component={MenuView} />
+          <Route path="/skinchef" component={SkinChef} />
+          <Route path="/shopping-list" component={ShoppingList} />
+          <Route path="/profile" component={Profile} />
+          <Route path="/settings" component={Settings} />
+          <Route path="/help" component={Help} />
+          <Route path="/contact" component={Contact} />
+          <Route>404 - Página no encontrada</Route>
+        </Switch>
+      </main>
+      <Toaster />
+    </div>
+  );
+}
+
+function PublicApp() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
+      <Navbar />
+      <main className="pt-16">
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/login" component={Login} />
+          <Route path="/register" component={Register} />
+          <Route path="/demo/questionnaire" component={DemoQuestionnaire} />
+          <Route path="/demo/generator" component={DemoGenerator} />
+          <Route path="/demo/skinchef" component={DemoSkinChef} />
+          <Route path="/help" component={Help} />
+          <Route path="/contact" component={Contact} />
+          <Route>404 - Página no encontrada</Route>
+        </Switch>
+      </main>
+      <Toaster />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppRouter />
+    </QueryClientProvider>
+  );
+}
+
+function AppRouter() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black flex items-center justify-center">
+        <div className="text-chalk text-xl">Cargando...</div>
+      </div>
+    );
+  }
+
+  return isAuthenticated ? <AuthenticatedApp /> : <PublicApp />;
+}
+
+===== FILE: client/src/main.tsx =====
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App";
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+
+===== FILE: client/src/hooks/useAuth.ts =====
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+
+export function useAuth() {
+  const queryClient = useQueryClient();
+  
+  const { data: user, isLoading, error } = useQuery({
+    queryKey: ["/api/auth/user"],
+    queryFn: async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found");
+      }
+      
+      const response = await apiRequest("/api/auth/user", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response;
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  return {
+    user,
+    isLoading,
+    isAuthenticated: !!user && !error,
+    logout: () => {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      queryClient.clear();
+      window.location.href = "/";
+    },
+    refreshAuth: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    }
+  };
+}
+
+===== FILE: client/src/lib/queryClient.ts =====
+import { QueryClient, QueryFunction } from "@tanstack/react-query";
+
+async function throwIfResNotOk(res: Response) {
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    throw new Error(`${res.status}: ${text}`);
+  }
+}
+
+export async function apiRequest(
+  url: string,
+  options: {
+    method?: string;
+    body?: unknown;
+    headers?: Record<string, string>;
+  } = {}
+): Promise<any> {
+  const { method = "GET", body, headers = {} } = options;
+  
+  // Add JWT token to headers if available
+  const token = localStorage.getItem("authToken");
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  // Add content type for POST/PUT requests with body
+  if (body && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: "include",
+  });
+
+  await throwIfResNotOk(res);
+  return await res.json();
+}
+
+type UnauthorizedBehavior = "returnNull" | "throw";
+export const getQueryFn: <T>(options: {
+  on401: UnauthorizedBehavior;
+}) => QueryFunction<T> =
+  ({ on401: unauthorizedBehavior }) =>
+  async ({ queryKey }) => {
+    const headers: Record<string, string> = {};
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const res = await fetch(queryKey.join("/") as string, {
+      headers,
+      credentials: "include",
+    });
+
+    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      return null;
+    }
+
+    await throwIfResNotOk(res);
+    return await res.json();
+  };
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      queryFn: getQueryFn({ on401: "throw" }),
+      refetchInterval: false,
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
+      retry: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
+
+===== FILE: client/src/lib/utils.ts =====
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+===== FILE: client/index.html =====
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- SEO Meta Tags -->
+    <title>TheCookFlow - Planificación Inteligente de Menús con IA</title>
+    <meta name="description" content="Genera menús semanales personalizados con IA, reconocimiento de alimentos por foto y listas de compra optimizadas. La aplicación española para cocina inteligente." />
+    <meta name="keywords" content="menú semanal, planificación comidas, IA cocina, reconocimiento alimentos, lista compra, recetas españolas" />
+    <meta name="author" content="TheCookFlow" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="TheCookFlow - Planificación Inteligente de Menús con IA" />
+    <meta property="og:description" content="Genera menús semanales personalizados con IA, reconocimiento de alimentos por foto y listas de compra optimizadas." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://thecookflow.com" />
+    <meta property="og:image" content="/logo.PNG" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TheCookFlow - Planificación Inteligente de Menús" />
+    <meta name="twitter:description" content="IA para generar menús semanales y reconocer alimentos por foto" />
+    <meta name="twitter:image" content="/logo.PNG" />
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "TheCookFlow",
+      "description": "Aplicación de planificación inteligente de menús con IA",
+      "url": "https://thecookflow.com",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "All",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      },
+      "featureList": [
+        "Generación de menús semanales con IA",
+        "Reconocimiento de alimentos por foto",
+        "Listas de compra inteligentes",
+        "Comparación de precios de supermercados"
+      ]
+    }
+    </script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://thecookflow.com" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

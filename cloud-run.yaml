@@ -1,0 +1,65 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: thecookflow
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/execution-environment: gen2
+spec:
+  template:
+    metadata:
+      annotations:
+        # Cloud Run resource configuration
+        run.googleapis.com/memory: 2Gi
+        run.googleapis.com/cpu: "2"
+        run.googleapis.com/execution-environment: gen2
+        # Startup and health check configuration
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/cpu-throttling: "false"
+        # Container startup timeout
+        run.googleapis.com/timeout: "3600s"
+    spec:
+      containerConcurrency: 1000
+      timeoutSeconds: 3600
+      serviceAccountName: cloud-run-service@PROJECT_ID.iam.gserviceaccount.com
+      containers:
+      - image: gcr.io/PROJECT_ID/thecookflow
+        ports:
+        - name: http1
+          containerPort: 8080
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: PORT
+          value: "8080"
+        resources:
+          limits:
+            cpu: "2"
+            memory: 2Gi
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 0
+          timeoutSeconds: 3
+          periodSeconds: 3
+          successThreshold: 1
+          failureThreshold: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 0
+          timeoutSeconds: 3
+          periodSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3

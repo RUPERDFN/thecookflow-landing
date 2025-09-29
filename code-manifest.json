@@ -1,0 +1,70 @@
+{
+  "project": "TheCookFlow",
+  "description": "AI-powered Spanish meal planning web application",
+  "tech_stack": ["React", "TypeScript", "Express.js", "PostgreSQL", "OpenAI", "Tailwind CSS"],
+  "created": "2025-09-27T22:30:32+00:00",
+  "main_directories": {
+    "server/": "Backend Express.js + TypeScript API",
+    "client/": "Frontend React + TypeScript application",
+    "shared/": "Shared schemas and types",
+    "public/": "Static assets and fonts"
+  },
+  "key_files": [
+    {
+      "path": "package.json",
+      "type": "config",
+      "description": "Main project dependencies and scripts"
+    },
+    {
+      "path": "server/index.ts",
+      "type": "backend",
+      "description": "Express server entry point with Cloud Run optimizations"
+    },
+    {
+      "path": "server/auth.ts",
+      "type": "backend",
+      "description": "JWT authentication system with bcrypt"
+    },
+    {
+      "path": "server/openai.ts",
+      "type": "backend",
+      "description": "AI integration for menu generation and food recognition"
+    },
+    {
+      "path": "server/routes.ts",
+      "type": "backend",
+      "description": "API routes for all application endpoints"
+    },
+    {
+      "path": "server/storage.ts",
+      "type": "backend",
+      "description": "Database operations with Drizzle ORM"
+    },
+    {
+      "path": "shared/schema.ts",
+      "type": "database",
+      "description": "Database schema and validation with Drizzle + Zod"
+    },
+    {
+      "path": "client/src/App.tsx",
+      "type": "frontend",
+      "description": "Main React application component with routing"
+    },
+    {
+      "path": "client/src/pages/Home.tsx",
+      "type": "frontend",
+      "description": "Landing page with Spanish language UI"
+    },
+    {
+      "path": "client/src/components/Navbar.tsx",
+      "type": "frontend",
+      "description": "Navigation component with authentication states"
+    },
+    {
+      "path": "client/src/index.css",
+      "type": "styles",
+      "description": "Custom CSS with blackboard theme and chalk styling"
+    }
+  ],
+  "instructions": "Load files progressively starting with package.json, then shared/schema.ts, server files, and finally client components. Each file contains TypeScript/JSX code for a Spanish meal planning application."
+}

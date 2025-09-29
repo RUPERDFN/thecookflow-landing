@@ -1,0 +1,616 @@
+===== THECOOKFLOW - ESTILOS Y ASSETS =====
+
+===== FILE: client/src/index.css =====
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* TheCookFlow Custom Font */
+@font-face {
+  font-family: 'Cheveuxdange';
+  src: url('/Cheveuxdange.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Global font fallback */
+* {
+  font-family: 'Cheveuxdange', 'Kalam', 'Caveat', cursive, sans-serif;
+}
+
+@layer base {
+  :root {
+    --background: 15 0% 6%;
+    --foreground: 0 0% 91%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --popover: 15 0% 6%;
+    --popover-foreground: 0 0% 91%;
+    --card: 15 0% 6%;
+    --card-foreground: 0 0% 91%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --primary: 174 39% 45%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 91%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 91%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --ring: 174 39% 45%;
+    --radius: 0.5rem;
+    --chart-1: 174 39% 45%;
+    --chart-2: 210 40% 80%;
+    --chart-3: 47 96% 69%;
+    --chart-4: 25 95% 53%;
+    --chart-5: 300 76% 72%;
+  }
+
+  .dark {
+    --background: 15 0% 6%;
+    --foreground: 0 0% 91%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --popover: 15 0% 6%;
+    --popover-foreground: 0 0% 91%;
+    --card: 15 0% 6%;
+    --card-foreground: 0 0% 91%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --primary: 174 39% 45%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 91%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 91%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --ring: 174 39% 45%;
+    --chart-1: 174 39% 45%;
+    --chart-2: 210 40% 80%;
+    --chart-3: 47 96% 69%;
+    --chart-4: 25 95% 53%;
+    --chart-5: 300 76% 72%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    font-family: 'Cheveuxdange', 'Kalam', 'Caveat', 'Crafty Girls', sans-serif;
+    background-color: #0f0f0f !important;
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/textura-grunge-oscura.jpg') !important;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: center;
+    color: white;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cheveuxdange', 'Kalam', 'Caveat', 'Crafty Girls', sans-serif;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    color: #f5f5f5;
+    font-weight: normal;
+  }
+
+  h1 {
+    font-size: 2.8rem;
+  }
+
+  h2 {
+    font-size: 2.5rem;
+  }
+
+  p, li, span, div, label, input, textarea, select, button {
+    font-family: 'Cheveuxdange', 'Kalam', 'Caveat', 'Crafty Girls', sans-serif;
+    color: #e8e8e8;
+  }
+}
+
+/* Estilos específicos del tema pizarra */
+.bg-blackboard {
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+.text-chalk {
+  color: #e8e8e8;
+}
+
+.text-chalk-white {
+  color: #f5f5f5;
+}
+
+.text-chalk-green {
+  color: #4a9b8e;
+}
+
+.text-chalk-yellow {
+  color: #fbbf24;
+}
+
+.text-chalk-red {
+  color: #c53030;
+}
+
+.border-chalk {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.border-chalk-light {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.border-chalk-green {
+  border-color: #4a9b8e;
+}
+
+.input-chalk {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #e8e8e8;
+  padding: 0.5rem;
+  border-radius: 8px;
+  font-family: 'Cheveuxdange', 'Kalam', 'Caveat', sans-serif;
+}
+
+.input-chalk:focus {
+  border-color: #4a9b8e;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(74, 155, 142, 0.2);
+}
+
+.glass-container {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  padding: 2rem;
+}
+
+.bg-blackboard-light {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bg-blackboard-hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bg-primary-green {
+  background-color: #4a9b8e;
+}
+
+.bg-primary-green-hover {
+  background-color: #43a491;
+}
+
+/* Secciones principales con separadores */
+.seccion {
+  padding: 4rem 2rem;
+  text-align: center;
+  max-width: 960px;
+  margin: auto;
+  position: relative;
+}
+
+.seccion:not(:last-child):after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 1px;
+}
+
+/* Button styles */
+.btn-primary-chalk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2.5rem;
+  background: linear-gradient(135deg, #4a9b8e 0%, #5fb3a3 50%, #4a9b8e 100%);
+  color: white;
+  border: 3px solid rgba(74, 155, 142, 0.6);
+  border-radius: 15px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  font-family: 'Cheveuxdange', 'Kalam', 'Caveat', sans-serif;
+  text-decoration: none;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 16px rgba(74, 155, 142, 0.3);
+  transition: all 0.3s ease;
+  transform: translateY(0);
+}
+
+.btn-primary-chalk:hover {
+  background: linear-gradient(135deg, #5fb3a3 0%, #7bc4b4 50%, #5fb3a3 100%);
+  border-color: rgba(74, 155, 142, 0.8);
+  box-shadow: 0 12px 24px rgba(74, 155, 142, 0.4);
+  transform: translateY(-3px);
+}
+
+.btn-secondary-chalk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2.5rem;
+  background: transparent;
+  color: #4a9b8e;
+  border: 3px solid rgba(74, 155, 142, 0.6);
+  border-radius: 15px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  font-family: 'Cheveuxdange', 'Kalam', 'Caveat', sans-serif;
+  text-decoration: none;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  transform: translateY(0);
+}
+
+.btn-secondary-chalk:hover {
+  background: rgba(74, 155, 142, 0.1);
+  border-color: rgba(74, 155, 142, 0.8);
+  color: #5fb3a3;
+  transform: translateY(-3px);
+}
+
+.btn-red-chalk {
+  display: inline-block;
+  padding: 1rem 2.5rem;
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #b91c1c 100%);
+  color: white;
+  border: 3px solid rgba(220, 38, 38, 0.6);
+  border-radius: 15px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  font-family: 'Cheveuxdange', 'Kalam', 'Caveat', sans-serif;
+  text-decoration: none;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 16px rgba(220, 38, 38, 0.3);
+  transition: all 0.3s ease;
+  transform: translateY(0);
+}
+
+.btn-red-chalk:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #dc2626 100%);
+  border-color: rgba(220, 38, 38, 0.8);
+  box-shadow: 0 12px 24px rgba(220, 38, 38, 0.4);
+  transform: translateY(-3px);
+}
+
+/* Logo styles */
+.logo {
+  width: 120px;
+  height: auto;
+  margin: 0 auto 2rem;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+/* Card styles for chalk theme */
+.card-chalk {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.card-chalk:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(74, 155, 142, 0.4);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Form styles */
+.form-chalk {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  padding: 2rem;
+}
+
+.label-chalk {
+  color: #e8e8e8;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+/* Loading animation */
+.loading-spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #4a9b8e;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .seccion {
+    padding: 2rem 1rem;
+  }
+  
+  .btn-primary-chalk,
+  .btn-secondary-chalk,
+  .btn-red-chalk {
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  h2 {
+    font-size: 1.8rem;
+  }
+}
+
+/* Recipe card animations */
+.recipe-card {
+  transition: all 0.3s ease;
+}
+
+.recipe-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 15px 30px rgba(74, 155, 142, 0.2);
+}
+
+/* Shopping list animations */
+.shopping-item {
+  transition: all 0.2s ease;
+}
+
+.shopping-item:hover {
+  background: rgba(74, 155, 142, 0.1);
+}
+
+/* Menu grid layout */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+/* Ingredient tag styles */
+.ingredient-tag {
+  display: inline-block;
+  background: rgba(74, 155, 142, 0.2);
+  color: #4a9b8e;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  margin: 0.25rem;
+  border: 1px solid rgba(74, 155, 142, 0.3);
+}
+
+/* Progress bar styles */
+.progress-bar {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  height: 8px;
+}
+
+.progress-bar-fill {
+  background: linear-gradient(90deg, #4a9b8e, #5fb3a3);
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* AI Chat styles */
+.chat-bubble {
+  max-width: 80%;
+  padding: 1rem;
+  border-radius: 18px;
+  margin: 0.5rem 0;
+  word-wrap: break-word;
+}
+
+.chat-bubble-user {
+  background: linear-gradient(135deg, #4a9b8e, #5fb3a3);
+  color: white;
+  margin-left: auto;
+  border-bottom-right-radius: 6px;
+}
+
+.chat-bubble-ai {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e8e8e8;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom-left-radius: 6px;
+}
+
+/* Navbar styles */
+.navbar-glass {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(74, 155, 142, 0.3);
+}
+
+/* Footer styles */
+.footer-glass {
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(74, 155, 142, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 155, 142, 0.7);
+}
+
+===== FILE: robots.txt =====
+User-agent: *
+Allow: /
+
+Sitemap: https://thecookflow.com/sitemap.xml
+
+===== FILE: sitemap.xml =====
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://thecookflow.com/</loc>
+    <lastmod>2025-09-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://thecookflow.com/demo/questionnaire</loc>
+    <lastmod>2025-09-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecookflow.com/demo/generator</loc>
+    <lastmod>2025-09-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecookflow.com/demo/skinchef</loc>
+    <lastmod>2025-09-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecookflow.com/help</loc>
+    <lastmod>2025-09-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thecookflow.com/contact</loc>
+    <lastmod>2025-09-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+</urlset>
+
+===== FILE: attached_assets/app-ads.txt =====
+google.com, pub-7982290772698799, DIRECT, f08c47fec0942fa0
+
+===== FILE: Dockerfile =====
+# Use the official Node.js runtime as a parent image
+FROM node:18-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Copy package.json and package-lock.json (if available)
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Install dev dependencies for build
+RUN npm ci
+
+# Build the application
+RUN npm run build
+
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
+
+# Don't run production as root
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nodeuser
+
+# Copy the build output and production dependencies
+COPY --from=builder /app/dist ./dist
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/start-production.sh ./start-production.sh
+COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
+
+# Make scripts executable
+RUN chmod +x ./start-production.sh ./entrypoint.sh
+
+# Change ownership of the app directory to the nodejs user
+RUN chown -R nodeuser:nodejs /app
+USER nodeuser
+
+# Expose the port the app runs on
+EXPOSE 8080
+
+# Set default port for Cloud Run
+ENV PORT=8080
+ENV NODE_ENV=production
+
+# Health check for container
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:' + process.env.PORT + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+
+# Run the application
+CMD ["./entrypoint.sh"]
+
+===== FILE: entrypoint.sh =====
+#!/bin/bash
+set -e
+
+# Validate environment variables
+if [ -z "$DATABASE_URL" ]; then
+    echo "Error: DATABASE_URL environment variable is required"
+    exit 1
+fi
+
+# Start the application
+exec ./start-production.sh
+
+===== FILE: start-production.sh =====
+#!/bin/bash
+set -e
+
+echo "Starting TheCookFlow production server..."
+
+# Memory optimization for Cloud Run
+export NODE_OPTIONS="--max-old-space-size=1024"
+
+# Start the server
+exec node dist/index.js

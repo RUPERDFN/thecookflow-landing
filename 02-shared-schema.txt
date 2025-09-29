@@ -1,0 +1,272 @@
+===== THECOOKFLOW - ESQUEMAS COMPARTIDOS =====
+
+===== FILE: shared/schema.ts =====
+import { sql } from 'drizzle-orm';
+import {
+  index,
+  jsonb,
+  pgTable,
+  timestamp,
+  varchar,
+  text,
+  integer,
+  boolean,
+  real,
+} from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// Session storage table - required for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table - supports both email/password and OAuth
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique().notNull(),
+  password: varchar("password"), // For email/password auth (hashed)
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  provider: varchar("provider").default("email"), // "email", "replit", "google"
+  providerId: varchar("provider_id"), // External provider user ID
+  isEmailVerified: boolean("is_email_verified").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Weekly menu plans
+export const menuPlans = pgTable("menu_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  name: varchar("name").notNull(),
+  weekStartDate: timestamp("week_start_date").notNull(),
+  preferences: jsonb("preferences"), // dietary preferences, budget, cooking time
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Individual recipes within menu plans
+export const recipes = pgTable("recipes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  menuPlanId: varchar("menu_plan_id").notNull().references(() => menuPlans.id),
+  dayOfWeek: integer("day_of_week").notNull(), // 0-6 (Monday-Sunday)
+  mealType: varchar("meal_type").notNull(), // breakfast, lunch, dinner, snack
+  name: varchar("name").notNull(),
+  description: text("description"),
+  ingredients: jsonb("ingredients").notNull(), // array of ingredient objects
+  instructions: jsonb("instructions").notNull(), // array of instruction steps
+  nutritionInfo: jsonb("nutrition_info"), // calories, protein, carbs, etc.
+  cookingTime: integer("cooking_time"), // minutes
+  servings: integer("servings").default(4),
+  imageUrl: varchar("image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Shopping lists generated from menu plans
+export const shoppingLists = pgTable("shopping_lists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  menuPlanId: varchar("menu_plan_id").notNull().references(() => menuPlans.id),
+  items: jsonb("items").notNull(), // array of shopping list items
+  totalEstimatedCost: real("total_estimated_cost"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Food recognition results from photos
+export const foodRecognitions = pgTable("food_recognitions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  imageUrl: varchar("image_url").notNull(),
+  recognizedItems: jsonb("recognized_items").notNull(), // array of recognized food items with confidence
+  suggestedRecipes: jsonb("suggested_recipes"), // array of recipe suggestions
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Private recipe library for offline menu generation
+export const recipeLibrary = pgTable("recipe_library", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  mealType: varchar("meal_type").notNull(), // breakfast, lunch, dinner, snack
+  cuisine: varchar("cuisine"), // spanish, mediterranean, etc.
+  difficulty: varchar("difficulty"), // easy, medium, hard
+  cookingTime: integer("cooking_time").notNull(), // minutes
+  servings: integer("servings").default(4),
+  ingredients: jsonb("ingredients").notNull(), // array of ingredient objects
+  instructions: jsonb("instructions").notNull(), // array of instruction steps
+  nutritionInfo: jsonb("nutrition_info"), // calories, protein, carbs, etc.
+  dietaryTags: text("dietary_tags").array(), // vegetarian, vegan, gluten-free, etc.
+  allergens: text("allergens").array(), // nuts, dairy, gluten, etc.
+  season: varchar("season"), // spring, summer, fall, winter, all
+  popularity: integer("popularity").default(0), // usage count for recommendations
+  isApproved: boolean("is_approved").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Zod schemas for validation
+export const insertMenuPlanSchema = createInsertSchema(menuPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRecipeSchema = createInsertSchema(recipes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertShoppingListSchema = createInsertSchema(shoppingLists).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFoodRecognitionSchema = createInsertSchema(foodRecognitions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRecipeLibrarySchema = createInsertSchema(recipeLibrary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Update schemas
+export const updateMenuPlanSchema = insertMenuPlanSchema.partial();
+export const updateRecipeSchema = insertRecipeSchema.partial();
+export const updateShoppingListSchema = insertShoppingListSchema.partial();
+export const updateRecipeLibrarySchema = insertRecipeLibrarySchema.partial();
+
+// Upsert user schema for OAuth and registration
+export const upsertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  email: z.string().email("Email inválido"),
+});
+
+// Types
+export type User = typeof users.$inferSelect;
+export type UpsertUser = z.infer<typeof upsertUserSchema>;
+export type InsertUser = typeof users.$inferInsert;
+export type MenuPlan = typeof menuPlans.$inferSelect;
+export type InsertMenuPlan = z.infer<typeof insertMenuPlanSchema>;
+export type Recipe = typeof recipes.$inferSelect;
+export type InsertRecipe = z.infer<typeof insertRecipeSchema>;
+export type ShoppingList = typeof shoppingLists.$inferSelect;
+export type InsertShoppingList = z.infer<typeof insertShoppingListSchema>;
+export type FoodRecognition = typeof foodRecognitions.$inferSelect;
+export type InsertFoodRecognition = z.infer<typeof insertFoodRecognitionSchema>;
+export type RecipeLibrary = typeof recipeLibrary.$inferSelect;
+export type InsertRecipeLibrary = z.infer<typeof insertRecipeLibrarySchema>;
+
+// Authentication response types
+export type AuthResponse = {
+  user: Omit<User, 'password'>;
+  token: string;
+  expiresIn: string;
+};
+
+// Menu generation types
+export type MenuPreferences = {
+  dietaryRestrictions: string[];
+  budget: string;
+  cookingTime: string;
+  servings: number;
+  daysToGenerate?: number;
+  mealsPerDay?: number;
+  cuisine?: string[];
+  allergies?: string[];
+  availableIngredients?: string[];
+  favorites?: string[];
+  dislikes?: string[];
+};
+
+export type GeneratedRecipe = {
+  mealType: string;
+  name: string;
+  description: string;
+  ingredients: Array<{
+    name: string;
+    amount: string;
+    unit: string;
+    category: string;
+  }>;
+  instructions: string[];
+  nutritionInfo: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+  };
+  cookingTime: number;
+  servings: number;
+};
+
+export type GeneratedDay = {
+  dayOfWeek: number;
+  dayName: string;
+  meals: GeneratedRecipe[];
+};
+
+export type GeneratedMenuPlan = {
+  name: string;
+  days: GeneratedDay[];
+  totalEstimatedCost: number;
+  shoppingList: {
+    category: string;
+    items: Array<{
+      name: string;
+      amount: string;
+      unit: string;
+      estimatedPrice: number;
+    }>;
+  }[];
+};
+
+// Food recognition types
+export type FoodRecognitionResult = {
+  recognizedItems: Array<{
+    name: string;
+    confidence: number;
+    category: string;
+  }>;
+  suggestedRecipes: Array<{
+    name: string;
+    description: string;
+    difficulty: string;
+    cookingTime: number;
+    mainIngredients: string[];
+  }>;
+};
+
+// API Error types
+export type ApiError = {
+  error: string;
+  code: string;
+  details?: any;
+};
+
+// Shopping list item type
+export type ShoppingListItem = {
+  id: string;
+  name: string;
+  amount: string;
+  unit: string;
+  category: string;
+  estimatedPrice: number;
+  purchased: boolean;
+  amazonUrl?: string;
+};
